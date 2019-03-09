@@ -2,7 +2,7 @@ class register:
     def __init__(self):
         self.registers = {}
         for i in range(32):
-            self.registers["x"+str(i)] = 0x0
+            self.registers['{0:05b}'.format(i)] = 0
     def readA(self,address):
         return self.registers[address]
 
@@ -10,5 +10,5 @@ class register:
         return self.registers[address]
     
     def writeC(self,address,value):
-        if not address=="x0":
+        if not address=="00000":
             self.registers[address] = value
