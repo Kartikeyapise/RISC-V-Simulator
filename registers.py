@@ -12,3 +12,6 @@ class register:
     def writeC(self,address,value):
         if not address=="00000":
             self.registers[address] = value
+
+    def printall(self):
+        print(self.registers)

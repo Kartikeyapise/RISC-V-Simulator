@@ -8,3 +8,6 @@ class memory:
     
     def writeMEMORY(self,address,value):
         self.memory[address] = value
+
+    def printall(self):
+        print(self.memory)
