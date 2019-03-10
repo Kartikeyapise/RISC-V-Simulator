@@ -1,4 +1,4 @@
 from execute import execute
 
 Execute = execute("code.mc")
-Execute.fetch()
+Execute.run()

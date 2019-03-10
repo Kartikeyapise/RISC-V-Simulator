@@ -4,7 +4,7 @@ from memory import memory
 class execute:
     def __init__(self,fName):
         self.RegisterFile = register()
-        self.RegisterFile.writeC("00001",3)
+        self.RegisterFile.writeC("00011",3)
         self.RegisterFile.writeC("00010",5)
         self.Memory = memory()
         self.PC = 0
@@ -16,6 +16,10 @@ class execute:
             value = int(value,16)
             self.Memory.writeMEMORY(address,value)
             #print(self.Memory.readMEMORY(address))
+
+    def run(self):
+        while self.Memory.readMEMORY(self.PC) != 0:
+            self.fetch()
 
     def fetch(self): 
         self.IR = self.Memory.readMEMORY(self.PC)
@@ -40,17 +44,39 @@ class execute:
             print("RA:"+str(self.RA))
             self.RB = self.RegisterFile.readB(RS2)
             print("RB:"+str(self.RB))
+            self.muxB = 0
             funct3 = self.IR[17:20]
             funct7 = self.IR[0:7]
             if(funct3 == "000" and funct7 == "0000000"):
                 self.write_enable = True
                 self.muxY=0
                 self.alu("add")
+        if format == "iORs":
+            RS1 = self.IR[12:17]
+            print("RS1:"+RS1)
+            self.RA = self.RegisterFile.readA(RS1)
+            print("RA:"+str(self.RA))
+            funct3 = self.IR[17:20]
+            if opcode == "0100011" and funct3 != "011":
+                a=1
+            else:
+                self.imm = int(self.IR[0:11],2)
+                print("imm:"+str(self.imm))
+                self.RD = self.IR[20:25] 
+                print("RD:"+self.RD)
+                self.muxB = 1
+                if opcode == "0010011" and funct3 == "000":
+                    self.write_enable = True
+                    self.muxY = 0
+                    self.alu("add")
     
     def alu(self,op):
         print("OP:",op)
         if op == "add":
-            self.RZ = self.RA + self.RB
+            if self.muxB == 0:
+                self.RZ = self.RA + self.RB
+            if self.muxB == 1:
+                self.RZ = self.RA + self.imm
         self.memAccess()
         
     def memAccess(self):
@@ -61,7 +87,7 @@ class execute:
     def writeReg(self):
         if self.write_enable:
             self.RegisterFile.writeC(self.RD, self.RY)
-        print(self.RegisterFile.readA("00011"))
+        print(self.RegisterFile.readA("00001"))
 
     def checkFormat(self,opcode):
         iORs = "0000011 0001111 0010011 0011011 0100011 1100111 1110011".split()
