@@ -46,6 +46,8 @@ class execute:
                 self.decodeS()
             else:
                 self.decodeI()
+        elif format == "sb":
+            self.decodeSB()
     
     def alu(self,op):
         print("OP:",op)
@@ -54,6 +56,9 @@ class execute:
                 self.RZ = self.RA + self.RB
             if self.muxB == 1:
                 self.RZ = self.RA + self.imm
+        elif op == "beq":
+            if self.RA == self.RB:
+                self.PC = self.PC - 4 + self.imm
         self.memAccess()
         
     def memAccess(self):
@@ -126,13 +131,35 @@ class execute:
         print("RB:"+str(self.RB))
         imm1 = self.IR[0:7]
         imm2 = self.IR[20:25]
+        self.write_enable = False
         self.imm = int(imm1+imm2,2)
         if self.funct3 == "010":
             self.RM = self.RB
             self.muxB = 1
-            self.write_enable = False
             self.memory_enable = True
             self.alu("add")
+
+    def decodeSB(self):
+        self.RS1 = self.IR[12:17]
+        print("RS1:"+self.RS1)
+        self.RS2 = self.IR[7:12]
+        print("RS2:"+self.RS2)
+        self.RA = self.RegisterFile.readA(self.RS1)
+        print("RA:"+str(self.RA))
+        self.RB = self.RegisterFile.readB(self.RS2)
+        print("RB:"+str(self.RB))
+        self.muxB = 0
+        self.funct3 = self.IR[17:20]
+        imm1 = self.IR[0]
+        imm2 = self.IR[24]
+        imm3 = self.IR[1:7]
+        imm4 = self.IR[20:24]
+        self.write_enable = False
+        self.imm = int(imm1 + imm2 + imm3 + imm4 + "0", 2)
+        if self.funct3 == "000":
+            self.alu("beq")
+        
+        
 
     def printRegisters(self):
         self.RegisterFile.printall()
