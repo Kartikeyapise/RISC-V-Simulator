@@ -50,6 +50,10 @@ class execute:
                 self.decodeI()
         elif format == "sb":
             self.decodeSB()
+        elif format == "u":
+            self.decodeU()
+        elif format == "uj":
+            self.decodeUJ()
     
     def alu(self,op):
         print("OP:",op)
@@ -61,6 +65,11 @@ class execute:
         elif op == "beq":
             if self.RA == self.RB:
                 self.PC = self.PC - 4 + self.imm
+        elif op == "auipc":
+            self.RZ = self.PC - 4 + self.imm
+        elif op == "jal":
+            self.RZ = self.PC
+            self.PC = self.PC - 4 + self.imm       
         self.memAccess()
         
     def memAccess(self):
@@ -162,7 +171,29 @@ class execute:
             print("going to beq")
             self.alu("beq")
         
-    
+    def decodeU(self):
+        self.RD = self.IR[20:25] 
+        print("RD:"+self.RD)
+        imm1 = self.IR[0:20]
+        imm2 = "000000000000"
+        self.imm = int(imm1 + imm2, 2)
+        if self.opcode == "0110111":
+            self.RA = 0
+            self.muxB = 1
+            self.alu("add")                 #lui
+        else:
+            self.alu("auipc")               #auipc
+
+    def decodeUJ(self):
+        self.RD = self.IR[20:25] 
+        print("RD:"+self.RD)
+        imm1 = self.IR[0]
+        imm2 = self.IR[12:20]
+        imm3 = self.IR[11]
+        imm4 = self.IR[1:11]
+        self.imm = int(imm1 + imm2 + imm3 + imm4 + "0", 2)
+        self.alu("jal")
+        
 
     def printRegisters(self):
         self.RegisterFile.printall()
