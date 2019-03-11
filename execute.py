@@ -32,6 +32,8 @@ class execute:
         print("opcode:"+self.opcode)
         self.memory_enable = False
         self.write_enable = True
+        self.muxY = 0
+        self.RZ = 0
         format = self.checkFormat()
         print("format:"+format)
         if format == "r":
@@ -157,9 +159,10 @@ class execute:
         self.write_enable = False
         self.imm = int(imm1 + imm2 + imm3 + imm4 + "0", 2)
         if self.funct3 == "000":
+            print("going to beq")
             self.alu("beq")
         
-        
+    
 
     def printRegisters(self):
         self.RegisterFile.printall()
