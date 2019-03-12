@@ -12,16 +12,16 @@ class execute:
             address,value = line.split()
             address = int(address,16)
             value = int(value,16)
-            self.Memory.writeMEMORY(address,value)
-            #print(self.Memory.readMEMORY(address))
+            self.Memory.writeWord(address,value)
+            #print(self.Memory.readWord(address))
 
     def run(self):
         self.printMemory()
-        while self.Memory.readMEMORY(self.PC) != 0:
+        while self.Memory.readWord(self.PC) != 0:
             self.fetch()
 
     def fetch(self): 
-        self.IR = self.Memory.readMEMORY(self.PC)
+        self.IR = self.Memory.readWord(self.PC)
         self.IR = '{:032b}'.format(self.IR)
         print("IR:"+str(self.IR))
         self.PC = self.PC + 4
@@ -74,7 +74,11 @@ class execute:
         
     def memAccess(self):
         if self.memory_enable:
-            self.Memory.writeMEMORY(self.RZ,self.RM)
+            if self.funct3 == "010":
+                self.Memory.writeWord(self.RZ,self.RM)
+            elif self.funct3 == "000":
+                self.Memory.writeByte(self.RZ,self.RM)
+
         if self.muxY == 0:
             self.RY = self.RZ
         self.writeReg()
@@ -144,7 +148,7 @@ class execute:
         imm2 = self.IR[20:25]
         self.write_enable = False
         self.imm = int(imm1+imm2,2)
-        if self.funct3 == "010":
+        if self.funct3 == "010" or self.funct3 == "000":
             self.RM = self.RB
             self.muxB = 1
             self.memory_enable = True
