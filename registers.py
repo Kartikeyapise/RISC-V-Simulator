@@ -15,3 +15,6 @@ class register:
 
     def printall(self):
         print(self.registers)
+
+    def returnAll(self):
+        return self.registers

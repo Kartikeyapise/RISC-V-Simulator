@@ -7,10 +7,10 @@ class memory:
         b = ""
         for i in range(4):
             if address+i in self.memory:
-                b = self.memory[address] + b
+                b = self.memory[address+i] + b
             else:
                 b = "00000000" + b
-        
+        print(b)
         return int(b,2)
 
     def readByte(self,address):
@@ -36,3 +36,6 @@ class memory:
 
     def printall(self):
         print(self.memory)
+
+    def returnAll(self):
+        return self.memory

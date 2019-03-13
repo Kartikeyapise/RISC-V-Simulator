@@ -2,11 +2,12 @@ from registers import register
 from memory import memory
 
 class execute:
-    def __init__(self,fName):
+    def __init__(self):
         self.RegisterFile = register()
         self.Memory = memory()
         self.PC = 0
         self.IR = 0
+    def assemble(self,fName):
         MC = open(fName,"r")
         for line in MC:
             address,value = line.split()
@@ -16,7 +17,7 @@ class execute:
             #print(self.Memory.readWord(address))
 
     def run(self):
-        self.printMemory()
+        self.printRegisters()
         while self.Memory.readWord(self.PC) != 0:
             self.fetch()
 
@@ -44,6 +45,7 @@ class execute:
             self.RA = self.RegisterFile.readA(self.RS1)
             print("RA:"+str(self.RA))
             self.funct3 = self.IR[17:20]
+            print("funct3:"+self.funct3)
             if self.opcode == "0100011" and self.funct3 != "011":
                 self.decodeS()
             else:
@@ -86,6 +88,7 @@ class execute:
     def writeReg(self):
         if self.write_enable:
             self.RegisterFile.writeC(self.RD, self.RY)
+            print("RY:"+str(self.RY))
 
     def checkFormat(self):
         iORs = "0000011 0001111 0010011 0011011 0100011 1100111 1110011".split()
@@ -204,4 +207,10 @@ class execute:
 
     def printMemory(self):
         self.Memory.printall()
+
+    def returnRegisters(self):
+        return self.RegisterFile.returnAll()
+
+    def returnMemory(self):
+        return self.Memory.returnAll()
     
