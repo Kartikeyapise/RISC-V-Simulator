@@ -1,3 +1,5 @@
+from bitstring import BitArray
+
 from registers import register
 from memory import memory
 
@@ -7,23 +9,29 @@ class execute:
         self.Memory = memory()
         self.PC = 0
         self.IR = 0
-    def assemble(self,fName):
-        MC = open(fName,"r")
-        for line in MC:
-            address,value = line.split()
-            address = int(address,16)
-            value = int(value,16)
-            self.Memory.writeWord(address,value)
-            #print(self.Memory.readWord(address))
+    def assemble(self,mc_code):
+        self.RegisterFile.flush()
+        self.Memory.flush()
+        self.PC = 0
+        mc_code = mc_code.splitlines()
+        for line in mc_code:
+            try:
+                address,value = line.split()
+                address = int(address,16)
+                value = BitArray(hex = value).int
+                self.Memory.writeWord(address,value)
+                #print(self.Memory.readWord(address))
+            except:
+                return "fail"
 
     def run(self):
         self.printRegisters()
-        while self.Memory.readWord(self.PC) != 0:
+        while self.nextIR() != 0:
             self.fetch()
 
     def fetch(self): 
-        self.IR = self.Memory.readWord(self.PC)
-        self.IR = '{:032b}'.format(self.IR)
+        self.IR = self.nextIR()
+        self.IR = BitArray(int = self.IR, length = 32).bin
         print("IR:"+str(self.IR))
         self.PC = self.PC + 4
         self.decode()
@@ -132,7 +140,7 @@ class execute:
 
     def decodeI(self):
         print("I-format")
-        self.imm = int(self.IR[0:12],2)
+        self.imm = BitArray(bin = self.IR[0:12]).int
         print("imm:"+str(self.imm))
         self.RD = self.IR[20:25] 
         print("RD:"+self.RD)
@@ -150,7 +158,7 @@ class execute:
         imm1 = self.IR[0:7]
         imm2 = self.IR[20:25]
         self.write_enable = False
-        self.imm = int(imm1+imm2,2)
+        self.imm = BitArray(bin = imm1+imm2).int
         if self.funct3 == "010" or self.funct3 == "000":
             self.RM = self.RB
             self.muxB = 1
@@ -173,7 +181,7 @@ class execute:
         imm3 = self.IR[1:7]
         imm4 = self.IR[20:24]
         self.write_enable = False
-        self.imm = int(imm1 + imm2 + imm3 + imm4 + "0", 2)
+        self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
         if self.funct3 == "000":
             print("going to beq")
             self.alu("beq")
@@ -183,7 +191,7 @@ class execute:
         print("RD:"+self.RD)
         imm1 = self.IR[0:20]
         imm2 = "000000000000"
-        self.imm = int(imm1 + imm2, 2)
+        self.imm = BitArray(bin = imm1 + imm2).int
         if self.opcode == "0110111":
             self.RA = 0
             self.muxB = 1
@@ -198,7 +206,7 @@ class execute:
         imm2 = self.IR[12:20]
         imm3 = self.IR[11]
         imm4 = self.IR[1:11]
-        self.imm = int(imm1 + imm2 + imm3 + imm4 + "0", 2)
+        self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
         self.alu("jal")
         
 
@@ -213,4 +221,10 @@ class execute:
 
     def returnMemory(self):
         return self.Memory.returnAll()
+
+    def readbyteMemory(self,address):
+        return self.Memory.readByte(address)
+
+    def nextIR(self):
+        return self.Memory.readWord(self.PC)
     

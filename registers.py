@@ -18,3 +18,7 @@ class register:
 
     def returnAll(self):
         return self.registers
+
+    def flush(self):
+        for i in range(32):
+            self.registers['{0:05b}'.format(i)] = 0

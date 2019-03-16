@@ -1,3 +1,5 @@
+from bitstring import BitArray
+
 class memory:
     def __init__(self):
         self.sp=0x7ffffffc
@@ -11,16 +13,16 @@ class memory:
             else:
                 b = "00000000" + b
         print(b)
-        return int(b,2)
+        return BitArray(bin = b).int
 
     def readByte(self,address):
         if address in self.memory:
-            return int(self.memory[address],2)
+            return BitArray(bin = self.memory[address]).int
         else:
             return 0
     
     def writeWord(self,address,value):
-        value = '{:032b}'.format(value)
+        value = BitArray(int = value, length = 32).bin
         b3 = value[0:8]
         b2 = value[8:16]
         b1 = value[16:24]
@@ -31,7 +33,7 @@ class memory:
         self.memory[address+3] = b3
 
     def writeByte(self,address,value):
-        value = '{:08b}'.format(value)
+        value = BitArray(int = value, length = 8).bin
         self.memory[address] = value
 
     def printall(self):
@@ -39,3 +41,6 @@ class memory:
 
     def returnAll(self):
         return self.memory
+
+    def flush(self):
+        self.memory.clear()
