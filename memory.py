@@ -2,7 +2,7 @@ from bitstring import BitArray
 
 class memory:
     def __init__(self):
-        self.sp=0x7ffffffc
+        #self.sp=0x7ffffffc
         self.memory = {}
     
     def readWord(self,address):

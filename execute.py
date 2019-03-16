@@ -7,12 +7,15 @@ class execute:
     def __init__(self):
         self.RegisterFile = register()
         self.Memory = memory()
+        self.sp=0x7ffffffc
         self.PC = 0
         self.IR = 0
+
     def assemble(self,mc_code):
         self.RegisterFile.flush()
         self.Memory.flush()
         self.PC = 0
+        self.RegisterFile.writeC("00010", self.sp)          #setting x2 as stack pointer
         mc_code = mc_code.splitlines()
         for line in mc_code:
             try:
@@ -72,25 +75,44 @@ class execute:
                 self.RZ = self.RA + self.RB
             if self.muxB == 1:
                 self.RZ = self.RA + self.imm
+        elif op == "mul":
+            if self.muxB == 0:
+                self.RZ = self.RA * self.RB
         elif op == "beq":
             if self.RA == self.RB:
+                self.PC = self.PC - 4 + self.imm
+        elif op == "bge":
+            if self.RA >= self.RB:
                 self.PC = self.PC - 4 + self.imm
         elif op == "auipc":
             self.RZ = self.PC - 4 + self.imm
         elif op == "jal":
-            self.RZ = self.PC
-            self.PC = self.PC - 4 + self.imm       
+            self.PC_temp = self.PC
+            self.PC = self.PC - 4 + self.imm 
+        elif op == "jalr":
+            self.PC_temp = self.PC
+            self.PC = self.RA + self.imm
         self.memAccess()
         
     def memAccess(self):
         if self.memory_enable:
-            if self.funct3 == "010":
-                self.Memory.writeWord(self.RZ,self.RM)
-            elif self.funct3 == "000":
-                self.Memory.writeByte(self.RZ,self.RM)
+            if self.muxY == 1:
+                if self.funct3 == "010":
+                    self.data = self.Memory.readWord(self.RZ)
+                elif self.funct3 == "000":
+                    self.data = self.Memory.readByte(self.RZ)
+            else:    
+                if self.funct3 == "010":
+                    self.Memory.writeWord(self.RZ,self.RM)
+                elif self.funct3 == "000":
+                    self.Memory.writeByte(self.RZ,self.RM)
 
         if self.muxY == 0:
             self.RY = self.RZ
+        elif self.muxY == 1:
+            self.RY = self.data
+        elif self.muxY == 2:
+            self.RY = self.PC_temp
         self.writeReg()
 
     def writeReg(self):
@@ -134,9 +156,12 @@ class execute:
         self.muxB = 0
         self.funct3 = self.IR[17:20]
         self.funct7 = self.IR[0:7]
-        if(self.funct3 == "000" and self.funct7 == "0000000"):
+        if self.funct3 == "000" and self.funct7 == "0000000":
             self.muxY=0
-            self.alu("add")
+            self.alu("add")                 #add
+        if self.funct3 == "000" and self.funct7 == "0000001":
+            self.muxY = 0
+            self.alu("mul")                 #mul
 
     def decodeI(self):
         print("I-format")
@@ -147,7 +172,16 @@ class execute:
         self.muxB = 1
         if self.opcode == "0010011" and self.funct3 == "000":
             self.muxY = 0
-            self.alu("add")
+            self.alu("add")                 #addi
+        elif self.opcode == "0000011" and (self.funct3 == "010" or self.funct3 == "000"):
+            self.muxY = 1
+            self.memory_enable = True
+            self.alu("add")                 #lw or lb
+        elif self.opcode == "1100111" and self.funct3 == "000":
+            self.muxY = 2
+            self.alu("jalr")                #jalr 
+
+
     
     def decodeS(self):
         print("S-format")
@@ -163,7 +197,7 @@ class execute:
             self.RM = self.RB
             self.muxB = 1
             self.memory_enable = True
-            self.alu("add")
+            self.alu("add")                 #sw or sb
 
     def decodeSB(self):
         self.RS1 = self.IR[12:17]
@@ -184,7 +218,9 @@ class execute:
         self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
         if self.funct3 == "000":
             print("going to beq")
-            self.alu("beq")
+            self.alu("beq")                 #beq
+        elif self.funct3 == "101":
+            self.alu("bge")                 #bge
         
     def decodeU(self):
         self.RD = self.IR[20:25] 
@@ -207,7 +243,8 @@ class execute:
         imm3 = self.IR[11]
         imm4 = self.IR[1:11]
         self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
-        self.alu("jal")
+        self.muxY = 2
+        self.alu("jal")                     #jal
         
 
     def printRegisters(self):
