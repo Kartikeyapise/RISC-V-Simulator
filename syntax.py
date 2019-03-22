@@ -38,8 +38,8 @@ class AssemblyHighlighter (QSyntaxHighlighter):
     """
     # Python keywords
     keywords = [
-        'add', 'addi', 'lw', 'lb','jal', 'sw', 'sb', 'mul', 'jalr',
-        'bge', 'beq',
+        'add', 'mul', 'addi', 'lw', 'lb', 'jalr',
+        'sw', 'sb', 'beq', 'bge', 'lui', 'auipc', 'jal'
     ]
 
     # Python operators
