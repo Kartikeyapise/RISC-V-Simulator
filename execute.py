@@ -68,30 +68,36 @@ class execute:
         elif format == "uj":
             self.decodeUJ()
     
-    def alu(self,op):
-        print("OP:",op)
-        if op == "add":
+    def alu(self,operation):
+        print("OP:",operation)
+        if operation == "add":
             if self.muxB == 0:
                 self.RZ = self.RA + self.RB
             if self.muxB == 1:
                 self.RZ = self.RA + self.imm
-        elif op == "mul":
+        elif operation == "mul":
             if self.muxB == 0:
                 self.RZ = self.RA * self.RB
-        elif op == "beq":
+        elif operation == "beq":
             if self.RA == self.RB:
                 self.PC = self.PC - 4 + self.imm
-        elif op == "bge":
+        elif operation == "bge":
             if self.RA >= self.RB:
                 self.PC = self.PC - 4 + self.imm
-        elif op == "auipc":
+        elif operation == "auipc":
             self.RZ = self.PC - 4 + self.imm
-        elif op == "jal":
+        elif operation == "jal":
             self.PC_temp = self.PC
             self.PC = self.PC - 4 + self.imm 
-        elif op == "jalr":
+        elif operation == "jalr":
             self.PC_temp = self.PC
             self.PC = self.RA + self.imm
+        elif operation == "slli":
+            self.RZ = self.RA << self.imm
+        elif operation == "srli":
+            self.RZ = self.RA >> self.imm
+        elif operation == "srai":
+            self.RZ = BitArray(int=self.RA >> self.imm, length=32).int 
         self.memAccess()
         
     def memAccess(self):
@@ -106,7 +112,7 @@ class execute:
                     self.Memory.writeWord(self.RZ,self.RM)
                 elif self.funct3 == "000":
                     self.Memory.writeByte(self.RZ,self.RM)
-
+        #writing in  muxY
         if self.muxY == 0:
             self.RY = self.RZ
         elif self.muxY == 1:
@@ -126,7 +132,6 @@ class execute:
         u = "0010111 0110111".split()
         sb = "1100011"
         uj = "1101111"
-
         for c in r:
             if self.opcode == c:
                 return "r"
@@ -180,6 +185,21 @@ class execute:
         elif self.opcode == "1100111" and self.funct3 == "000":
             self.muxY = 2
             self.alu("jalr")                #jalr 
+        elif self.opcode == "0010011" and self.funct3 == "001":
+            self.funct7 = self.IR[0:7]
+            self.imm = BitArray(bin = self.IR[7:12]).uint
+            if self.funct7 == "0000000":
+                self.muxY = 0
+                self.alu("slli")            #slli
+        elif self.opcode == "0010011" and self.funct3 == "101":
+            self.funct7 = self.IR[0:7]
+            self.imm = BitArray(bin = self.IR[7:12]).uint
+            if self.funct7 == "0000000":
+                self.muxY = 0
+                self.alu("srli")            #srli
+            if self.funct7 == "0100000":
+                self.muxY = 0
+                self.alu("srai")            #srai (arithmetic right shift)
 
 
     
