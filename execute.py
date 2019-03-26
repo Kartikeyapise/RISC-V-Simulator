@@ -81,8 +81,14 @@ class execute:
         elif operation == "beq":
             if self.RA == self.RB:
                 self.PC = self.PC - 4 + self.imm
+        elif operation == "bne":
+            if self.RA != self.RB:
+                self.PC = self.PC - 4 + self.imm
         elif operation == "bge":
             if self.RA >= self.RB:
+                self.PC = self.PC - 4 + self.imm
+        elif operation == "blt":
+            if self.RA < self.RB:
                 self.PC = self.PC - 4 + self.imm
         elif operation == "auipc":
             self.RZ = self.PC - 4 + self.imm
@@ -93,11 +99,14 @@ class execute:
             self.PC_temp = self.PC
             self.PC = self.RA + self.imm
         elif operation == "slli":
-            self.RZ = self.RA << self.imm
-        elif operation == "srli":
-            self.RZ = self.RA >> self.imm
+            self.RZ = BitArray(int=self.RA, length=32) << self.imm
+            self.RZ = self.RZ.int
         elif operation == "srai":
-            self.RZ = BitArray(int=self.RA >> self.imm, length=32).int 
+            self.RZ = self.RA >> self.imm
+        elif operation == "srli":
+            self.RZ = BitArray(int=self.RA, length=32) << self.imm
+            self.RZ = self.RZ.int
+            
         self.memAccess()
         
     def memAccess(self):
@@ -108,10 +117,12 @@ class execute:
                 elif self.funct3 == "000":
                     self.data = self.Memory.readByte(self.RZ)
             else:    
-                if self.funct3 == "010":
+                if self.funct3 == "010":                        #sw
                     self.Memory.writeWord(self.RZ,self.RM)
-                elif self.funct3 == "000":
+                elif self.funct3 == "000":                      #sb
                     self.Memory.writeByte(self.RZ,self.RM)
+                elif self.funct3 == "001":                      #sh
+                    self.Memory.writeDoubleByte(self.RZ, self.RM)
         #writing in  muxY
         if self.muxY == 0:
             self.RY = self.RZ
@@ -213,7 +224,7 @@ class execute:
         imm2 = self.IR[20:25]
         self.write_enable = False
         self.imm = BitArray(bin = imm1+imm2).int
-        if self.funct3 == "010" or self.funct3 == "000":
+        if self.funct3 == "010" or self.funct3 == "000" or self.funct3 == "001":
             self.RM = self.RB
             self.muxB = 1
             self.memory_enable = True
@@ -241,6 +252,17 @@ class execute:
             self.alu("beq")                 #beq
         elif self.funct3 == "101":
             self.alu("bge")                 #bge
+        elif self.funct3 == "100":
+            self.alu("blt")                 #blt    
+        elif self.funct3 == "001":
+            self.alu("bne")                 #bne
+        self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").uint             #for unsigned operations
+        print(str(self.imm))
+        if self.funct3 == "111":
+            self.alu("bge")                 #bgeu
+        elif self.funct3 == "110":
+            self.alu("blt")                 #bltu
+
         
     def decodeU(self):
         self.RD = self.IR[20:25] 
