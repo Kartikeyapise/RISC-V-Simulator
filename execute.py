@@ -76,8 +76,11 @@ class execute:
             if self.muxB == 1:
                 self.RZ = self.RA + self.imm
         elif operation == "mul":
-            if self.muxB == 0:
-                self.RZ = self.RA * self.RB
+            self.RZ = self.RA * self.RB
+        elif operation == "div":
+            self.RZ = self.RA // self.RB
+        elif operation == "rem":
+            self.RZ = self.RA % self.RB
         elif operation == "beq":
             if self.RA == self.RB:
                 self.PC = self.PC - 4 + self.imm
@@ -101,6 +104,9 @@ class execute:
         elif operation == "slli":
             self.RZ = BitArray(int=self.RA, length=32) << self.imm
             self.RZ = self.RZ.int
+        elif operation == "srli":
+            self.RZ = BitArray(int=self.RA, length=32) >> self.imm
+            self.RZ = self.RZ.int
         elif operation == "srai":
             self.RZ = self.RA >> self.imm
         elif operation == "or":
@@ -114,9 +120,17 @@ class execute:
         elif operation == "sll":
             self.RZ = BitArray(int=self.RA, length=32) << self.RB
             self.RZ = self.RZ.int
-        elif operation == "srli":
-            self.RZ = BitArray(int=self.RA, length=32) << self.imm
+        elif operation == "srl":
+            self.RZ = BitArray(int=self.RA, length=32) >> self.RB
             self.RZ = self.RZ.int
+        elif operation == "sra":
+            self.RZ = self.RA >> self.RB
+        elif operation == "slt":
+            self.RZ = 1 if self.RA < self.RB else 0
+        elif operation == "sltu":
+            self.RA = BitArray(int = self.RA, length = 32).uint
+            self.RB = BitArray(int = self.RB, length = 32).uint
+            self.RZ = 1 if self.RA < self.RB else 0
             
         self.memAccess()
         
@@ -184,21 +198,32 @@ class execute:
         self.funct3 = self.IR[17:20]
         self.funct7 = self.IR[0:7]
         self.muxY=0
-        if self.opcode == "0110011":
-            if self.funct3 == "000" and self.funct7 == "0000000":
-                self.alu("add")                 #add
-            elif self.funct3 == "000" and self.funct7 == "0000001":
-                self.alu("mul")                 #mul
-            elif self.funct3 == "110" and self.funct7 == "0000000":
-                self.alu("or")                  #or
-            elif self.funct3 == "111" and self.funct7 == "0000000":
-                self.alu("and")                 #and
-            elif self.funct3 == "100" and self.funct7 == "0000000":
-                self.alu("xor")                 #xor
-            elif self.funct3 == "000" and self.funct7 == "0100000":
-                self.alu("sub")                 #sub
-            elif self.funct3 == "001" and self.funct7 == "0000000":
-                self.alu("sll")                 #sub
+        if self.funct3 == "000" and self.funct7 == "0000000":
+            self.alu("add")                 #add
+        elif self.funct3 == "000" and self.funct7 == "0000001":
+            self.alu("mul")                 #mul
+        elif self.funct3 == "110" and self.funct7 == "0000000":
+            self.alu("or")                  #or
+        elif self.funct3 == "111" and self.funct7 == "0000000":
+            self.alu("and")                 #and
+        elif self.funct3 == "100" and self.funct7 == "0000000":
+            self.alu("xor")                 #xor
+        elif self.funct3 == "000" and self.funct7 == "0100000":
+            self.alu("sub")                 #sub
+        elif self.funct3 == "001" and self.funct7 == "0000000":
+            self.alu("sll")                 #sub
+        elif self.funct3 == "010" and self.funct7 == "0000000":
+            self.alu("slt")                 #slt
+        elif self.funct3 == "011" and self.funct7 == "0000000":
+            self.alu("sltu")                 #sltu
+        elif self.funct3 == "101" and self.funct7 == "0000000":
+            self.alu("srl")                 #srl
+        elif self.funct3 == "101" and self.funct7 == "0100000":
+            self.alu("sra")                 #sra
+        elif self.funct3 == "100" and self.funct7 == "0000001":
+            self.alu("div")                 #div
+        elif self.funct3 == "110" and self.funct7 == "0000001":
+            self.alu("rem")                 #rem
 
 
     def decodeI(self):
