@@ -211,11 +211,11 @@ class execute:
         elif self.funct3 == "000" and self.funct7 == "0100000":
             self.alu("sub")                 #sub
         elif self.funct3 == "001" and self.funct7 == "0000000":
-            self.alu("sll")                 #sub
+            self.alu("sll")                 #sll
         elif self.funct3 == "010" and self.funct7 == "0000000":
             self.alu("slt")                 #slt
         elif self.funct3 == "011" and self.funct7 == "0000000":
-            self.alu("sltu")                 #sltu
+            self.alu("sltu")                #sltu
         elif self.funct3 == "101" and self.funct7 == "0000000":
             self.alu("srl")                 #srl
         elif self.funct3 == "101" and self.funct7 == "0100000":
@@ -275,7 +275,7 @@ class execute:
             self.RM = self.RB
             self.muxB = 1
             self.memory_enable = True
-            self.alu("add")                 #sw or sb
+            self.alu("add")                 #sw or sb or sh
 
     def decodeSB(self):
         self.RS1 = self.IR[12:17]
