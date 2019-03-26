@@ -98,6 +98,17 @@ class execute:
             self.RZ = self.RA >> self.imm
         elif operation == "srai":
             self.RZ = BitArray(int=self.RA >> self.imm, length=32).int 
+        elif operation == "or":
+            self.RZ = self.RA | self.RB
+        elif operation == "and":
+            self.RZ = self.RA & self.RB
+        elif operation == "xor":
+            self.RZ = self.RA ^ self.RB
+        elif operation == "sub":
+            self.RZ = self.RA - self.RB
+        elif operation == "sll":
+            self.RZ = BitArray(int=self.RA, length=32) << self.RB
+            self.RZ = self.RZ.int
         self.memAccess()
         
     def memAccess(self):
@@ -161,12 +172,23 @@ class execute:
         self.muxB = 0
         self.funct3 = self.IR[17:20]
         self.funct7 = self.IR[0:7]
-        if self.funct3 == "000" and self.funct7 == "0000000":
-            self.muxY=0
-            self.alu("add")                 #add
-        if self.funct3 == "000" and self.funct7 == "0000001":
-            self.muxY = 0
-            self.alu("mul")                 #mul
+        self.muxY=0
+        if self.opcode == "0110011":
+            if self.funct3 == "000" and self.funct7 == "0000000":
+                self.alu("add")                 #add
+            elif self.funct3 == "000" and self.funct7 == "0000001":
+                self.alu("mul")                 #mul
+            elif self.funct3 == "110" and self.funct7 == "0000000":
+                self.alu("or")                  #or
+            elif self.funct3 == "111" and self.funct7 == "0000000":
+                self.alu("and")                 #and
+            elif self.funct3 == "100" and self.funct7 == "0000000":
+                self.alu("xor")                 #xor
+            elif self.funct3 == "000" and self.funct7 == "0100000":
+                self.alu("sub")                 #sub
+            elif self.funct3 == "001" and self.funct7 == "0000000":
+                self.alu("sll")                 #sub
+
 
     def decodeI(self):
         print("I-format")
