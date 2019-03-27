@@ -15,6 +15,7 @@ class execute:
         self.RegisterFile.flush()
         self.Memory.flush()
         self.PC = 0
+        self.cycle = 0
         self.RegisterFile.writeC("00010", self.sp)          #setting x2 as stack pointer
         mc_code = mc_code.splitlines()
         for line in mc_code:
@@ -33,6 +34,7 @@ class execute:
             self.fetch()
 
     def fetch(self): 
+        self.cycle += 1
         self.IR = self.nextIR()
         self.IR = BitArray(int = self.IR, length = 32).bin
         print("IR:"+str(self.IR))
@@ -138,9 +140,15 @@ class execute:
         if self.memory_enable:
             if self.muxY == 1:
                 if self.funct3 == "010":
-                    self.data = self.Memory.readWord(self.RZ)
+                    self.data = self.Memory.readWord(self.RZ)   #lw
                 elif self.funct3 == "000":
-                    self.data = self.Memory.readByte(self.RZ)
+                    self.data = self.Memory.readByte(self.RZ)   #lb
+                elif self.funct3 == "001":
+                    self.data = self.Memory.readDoubleByte(self.RZ)   #lh
+                elif self.funct3 == "100":
+                    self.data = self.Memory.readUnsignedByte(self.RZ)   #lbu
+                elif self.funct3 == "101":
+                    self.data = self.Memory.readUnsignedDoubleByte(self.RZ)     #lhu
             else:    
                 if self.funct3 == "010":                        #sw
                     self.Memory.writeWord(self.RZ,self.RM)
@@ -236,10 +244,10 @@ class execute:
         if self.opcode == "0010011" and self.funct3 == "000":
             self.muxY = 0
             self.alu("add")                 #addi
-        elif self.opcode == "0000011" and (self.funct3 == "010" or self.funct3 == "000"):
+        elif self.opcode == "0000011" and (self.funct3 == "010" or self.funct3 == "000" or self.funct3 == "001" or self.funct3 == "100" or self.funct3 == "101"):
             self.muxY = 1
             self.memory_enable = True
-            self.alu("add")                 #lw or lb
+            self.alu("add")                 #all load instructions - lb, lh, lw, lbu, lhu
         elif self.opcode == "1100111" and self.funct3 == "000":
             self.muxY = 2
             self.alu("jalr")                #jalr 

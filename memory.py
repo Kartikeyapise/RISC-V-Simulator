@@ -29,6 +29,22 @@ class memory:
                 b = "00000000" + b
         #print(b)
         return BitArray(bin = b).int
+
+    def readUnsignedByte(self,address):
+        if address in self.memory:
+            return BitArray(bin = self.memory[address]).uint
+        else:
+            return 0
+
+    def readUnsignedDoubleByte(self, address):
+        b = ""
+        for i in range(2):
+            if address+i in self.memory:
+                b = self.memory[address+i] + b
+            else:
+                b = "00000000" + b
+        #print(b)
+        return BitArray(bin = b).uint
     
     def writeWord(self,address,value):
         if address%4 != 0:
