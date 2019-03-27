@@ -112,11 +112,20 @@ class execute:
         elif operation == "srai":
             self.RZ = self.RA >> self.imm
         elif operation == "or":
-            self.RZ = self.RA | self.RB
+            if self.muxB == 0:
+                self.RZ = self.RA | self.RB
+            elif self.muxB == 1:
+                self.RZ = self.RA | self.imm
         elif operation == "and":
-            self.RZ = self.RA & self.RB
+            if self.muxB == 0:
+                self.RZ = self.RA & self.RB
+            elif self.muxB == 1:
+                self.RZ = self.RA & self.imm
         elif operation == "xor":
-            self.RZ = self.RA ^ self.RB
+            if self.muxB == 0:
+                self.RZ = self.RA ^ self.RB
+            elif self.muxB == 1:
+                self.RZ = self.RA ^ self.imm
         elif operation == "sub":
             self.RZ = self.RA - self.RB
         elif operation == "sll":
@@ -128,11 +137,19 @@ class execute:
         elif operation == "sra":
             self.RZ = self.RA >> self.RB
         elif operation == "slt":
-            self.RZ = 1 if self.RA < self.RB else 0
+            if self.muxB == 0:
+                self.RZ = 1 if self.RA < self.RB else 0                 #slt
+            elif self.muxB == 1:
+                self.RZ = 1 if self.RA < self.imm else 0                #slti
         elif operation == "sltu":
-            self.RA = BitArray(int = self.RA, length = 32).uint
-            self.RB = BitArray(int = self.RB, length = 32).uint
-            self.RZ = 1 if self.RA < self.RB else 0
+            if self.muxB == 0:
+                self.RA = BitArray(int = self.RA, length = 32).uint
+                self.RB = BitArray(int = self.RB, length = 32).uint
+                self.RZ = 1 if self.RA < self.RB else 0                 #sltu
+            elif self.muxB == 1:
+                self.RA = BitArray(int = self.RA, length = 32).uint
+                self.imm = BitArray(int = self.imm, length = 32).uint
+                self.RZ = 1 if self.RA < self.imm else 0                #sltiu
             
         self.memAccess()
         
@@ -251,21 +268,38 @@ class execute:
         elif self.opcode == "1100111" and self.funct3 == "000":
             self.muxY = 2
             self.alu("jalr")                #jalr 
-        elif self.opcode == "0010011" and self.funct3 == "001":
-            self.funct7 = self.IR[0:7]
-            self.imm = BitArray(bin = self.IR[7:12]).uint
-            if self.funct7 == "0000000":
+        elif self.opcode == "0010011":
+            if self.funct3 == "001":
+                self.funct7 = self.IR[0:7]
+                self.imm = BitArray(bin = self.IR[7:12]).uint
+                if self.funct7 == "0000000":
+                    self.muxY = 0
+                    self.alu("slli")            #slli
+            elif self.funct3 == "101":
+                self.funct7 = self.IR[0:7]
+                self.imm = BitArray(bin = self.IR[7:12]).uint
+                if self.funct7 == "0000000":
+                    self.muxY = 0
+                    self.alu("srli")            #srli
+                if self.funct7 == "0100000":
+                    self.muxY = 0
+                    self.alu("srai")            #srai (arithmetic right shift)
+            elif self.funct3 == "010":
                 self.muxY = 0
-                self.alu("slli")            #slli
-        elif self.opcode == "0010011" and self.funct3 == "101":
-            self.funct7 = self.IR[0:7]
-            self.imm = BitArray(bin = self.IR[7:12]).uint
-            if self.funct7 == "0000000":
+                self.alu("slt")             #slti
+            elif self.funct3 == "011":
                 self.muxY = 0
-                self.alu("srli")            #srli
-            if self.funct7 == "0100000":
+                self.alu("sltu")            #sltiu 
+            elif self.funct3 == "100":
                 self.muxY = 0
-                self.alu("srai")            #srai (arithmetic right shift)
+                self.alu("xor")             #xori
+            elif self.funct3 == "110":
+                self.muxY = 0
+                self.alu("or")             #ori
+            elif self.funct3 == "111":
+                self.muxY = 0
+                self.alu("and")             #andi
+
 
 
     
