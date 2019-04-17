@@ -10,6 +10,12 @@ class PipelineExecute:
         self.sp=0x7ffffffc
         self.PC = 0
         self.IR = 0
+        self.RZ = 0
+        self.RA = 0
+        self.RB = 0
+        self.RY = 0
+        self.RM = 0
+        self.imm = 0
         self.cycle = 0
         self.stalls_data = 0
         self.stalls_control = 0
@@ -30,6 +36,7 @@ class PipelineExecute:
         self.was_data_hazard = False
         self.knob3 = False
         self.knob4 = False
+        self.knob5 = False
         self.buffer_line_no = 0
 
     def runPipeLineStep(self):
@@ -70,6 +77,8 @@ class PipelineExecute:
         else:
             self.decode_run = False
         if self.nextIR() != 0:
+            if self.PC/4 == (self.buffer_line_no - 1):
+                self.knob5 = True
             #print('---------------------------')
             self.fetch()
             #print('---------------------------')
@@ -81,6 +90,18 @@ class PipelineExecute:
             self.RegisterFile.printall()
         if self.knob4:
             print('IR : ' + self.IR)
+
+        if self.knob5:
+            print('IR : ' + self.IR)
+            print('RA : ' + str(self.RA))
+            if self.muxB == 0:
+                print('RB : ' + str(self.RB))
+            else:
+                print('imm : ' + str(self.imm))
+            print('RZ : ' + str(self.RZ))
+            print('RY : ' + str(self.RY))
+            print('RM : ' + str(self.RM))
+            self.knob5 = False
 
         if (self.nextIR() == 0) and (not self.memAccess_run) and (not self.alu_run) and (not self.decode_run) and (not self.fetch_run):
             self.stopPipeLine = True

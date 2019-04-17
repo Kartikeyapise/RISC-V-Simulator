@@ -47,3 +47,7 @@ mul x10, x10, x6 #// return n * fact (n −1)
 jalr x0, 0(x1) #// return to the caller
 
 EXIT:
+----------------------
+addi x4 x5 5
+addi x3 x4 4
+add x9 x3 x4

@@ -421,6 +421,8 @@ class Ui_MainWindow(QtWidgets.QWidget):
         self.step.setEnabled(True)
 
     def assemble_as(self):
+        if self.lineEdit.text() != '':
+            self.PipelineExecute.buffer_line_no = int(self.lineEdit.text())
         as_code = self.plainTextEdit_as.toPlainText()
         mc_code = mc_generator(as_code)
         self.plainTextEdit_mc.setPlainText(mc_code)
