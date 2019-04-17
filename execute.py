@@ -10,6 +10,7 @@ class execute:
         self.sp=0x7ffffffc
         self.PC = 0
         self.IR = 0
+        self.total_control_ins = 0
 
     def assemble(self,mc_code):
         self.RegisterFile.flush()
@@ -336,6 +337,7 @@ class execute:
         imm4 = self.IR[20:24]
         self.write_enable = False
         self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
+        self.total_control_ins = self.total_control_ins + 1
         if self.funct3 == "000":
             print("going to beq")
             self.alu("beq")                 #beq

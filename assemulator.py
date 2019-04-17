@@ -187,10 +187,11 @@ def SB_type(words, label_offset):
         print('problem in getting \'rs2\' in SB_type in ',words)
 
     try:
-        imm=BitArray(int=int(str(label_offset)), length=12).bin
+        imm=BitArray(int=label_offset, length=12).bin
     except:
         print('problem in generating immediate in SB_type in ',words)
 
+    print(label_offset, imm[0] + imm[2:8] + rs2 + rs1 + funct3 + imm[8:12] + imm[1] + opcode)
     try:
         machine_code = imm[0] + imm[2:8] + rs2 + rs1 + funct3 + imm[8:12] + imm[1] + opcode
         return machine_code
@@ -238,7 +239,7 @@ def UJ_type(words, label_address):
         print('problem in getting \'rd\' in UJ_type in ',words)
 
     try:
-        label_address='{0:021b}'.format(int(label_address))
+        label_address=BitArray(int=label_address, length=21).bin
     except:
         print('problem in getting label_address in UJ_type in ',words)
     try:
@@ -271,7 +272,7 @@ def mc_generator(asm_text=""):
 
         #Handling of data part of code starts here
         instructions = data.split('\n')
-        data_address = int("0x10000000", 0)
+        data_address = int("0x10000000", 16)        #sheky bola 16 likh de 0 ki jgh
         for i in range(len(instructions)):
             if(instructions[i]==''):                                                    #removal of '\n's
                 del instructions[i]
@@ -280,13 +281,15 @@ def mc_generator(asm_text=""):
                 if instructions[i].find('.word')>=0:
                     for word in (instructions[i][instructions[i].find('.word'):].strip()).split():
                         try:
-                            return_txt+=str(hex(data_address))+' '+str(hex(int(word)))+'\n'
+                            #return_txt+=str(hex(data_address))+' '+str(hex(int(word)))+'\n'
+                            return_txt+=str(hex(data_address))+' 0x' + BitArray(int=int(word), length=32).hex + '\n'
                             data_address=data_address+4
                         except: pass
                 if instructions[i].find('.byte')>=0:
                     for byte in (instructions[i][instructions[i].find('.byte'):].strip()).split():
                         try:
-                            return_txt+=str(hex(data_address))+' '+str(hex(int(byte)))+'\n'
+                            #return_txt+=str(hex(data_address))+' '+str(hex(int(byte)))+'\n'
+                            return_txt+=str(hex(data_address))+' 0x' + BitArray(int=int(byte), length=32).hex + '\n'
                             data_address=data_address+1
                         except: pass
                 #file_write.write(hex(data_address)+' \n')
@@ -319,16 +322,18 @@ def mc_generator(asm_text=""):
         if (k > 0):
             instructions[i]=instructions[i].strip()
             label=instructions[i][:k]
+            label_position[label]=i
             if(len(instructions[i][k+1:]) > 0):
                 instructions[i]=instructions[i][k+1:]
             else:
                 del instructions[i]
                 i=i-1
                 n=n-1
-            label_position[label]=i
+            print(instructions[i-1], instructions[i])
         i=i+1
 
     pc=0
+    print(label_position)
 
     for i in range(0, n):
         instructions[i]=instructions[i].replace(',', ' ')
@@ -340,7 +345,7 @@ def mc_generator(asm_text=""):
         elif(mnemonic_fmt[words[0]][0] == 'I'):
             return_txt+=hex(pc)+' '
             ###file_write.write(hex(pc)+' ')
-            if(words[0] == 'lb' or words[0] == 'lw'):
+            if(words[0] == 'lb' or words[0] == 'lw' or words[0] == 'jalr'):
             #     pass
             # elif(words[0] == 'lw'):
                 #if using a data label:
@@ -363,7 +368,7 @@ def mc_generator(asm_text=""):
                         temp_str += words[i]
                     offset = temp_str[0:temp_str.find('(')]
                     # handling of -ve offset left
-                    rs2=temp_str[temp_str.find('(')+1:temp_str.find(')')]
+                    rs2=temp_str[(temp_str.find('(')+1):temp_str.find(')')]
                     words=[words[0],words[1],rs2,offset]
                     return_txt+='0x' + '{0:08x}'.format(int(I_type(words), 2))+'\n'
             else:
@@ -374,25 +379,19 @@ def mc_generator(asm_text=""):
             return_txt+=hex(pc)+' '
             return_txt+='0x' + '{0:08x}'.format(int(S_type(words), 2))+'\n'
         elif(mnemonic_fmt[words[0]][0] == 'SB'):
-            var=(label_position[words[3]])*4-pc
+            var=int(((label_position[words[3]])*4-pc)/2)
+            print('var   ', words[3], var)
             #print('0x' + '{0:08x}'.format(int(SB_type(words, var), 2)))
-            return_txt+=hex(pc)+' '+'0x' + '{0:08x}'.format(int(SB_type(words, var)))+'\n'
+            return_txt+=hex(pc)+' '+'0x' + '{0:08x}'.format(int(SB_type(words, var), 2))+'\n'
         elif(mnemonic_fmt[words[0]][0] == 'U'):
             return_txt+=hex(pc)+' '+'0x' + '{0:08x}'.format(int(U_type(words), 2))+'\n'
         elif(mnemonic_fmt[words[0]][0] == 'UJ'):
-            return_txt+=hex(pc)+' '+'0x' + '{0:08x}'.format(int(UJ_type(words, '10101'), 2))
+            temp_var=(label_position[words[2]])*4-pc
+            return_txt+=hex(pc)+' '+'0x' + '{0:08x}'.format(int(UJ_type(words, temp_var), 2))+'\n'
         pc=pc+4
     if(asm_text==''):
         file_write.write(return_txt)
     else:
         return return_txt
 if __name__ == "__main__":
-    abc=mc_generator('''.data
-var: .word 10
-var2: .word 11
-
-
-
-.text
-lw x5 var
-add x6 x5 x0''')
+    abc=mc_generator()

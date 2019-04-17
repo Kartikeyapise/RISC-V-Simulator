@@ -3,7 +3,7 @@ from bitstring import BitArray
 from registers import register
 from memory import memory
 
-class execute:
+class PipelineExecute:
     def __init__(self):
         self.RegisterFile = register()
         self.Memory = memory()
@@ -11,7 +11,9 @@ class execute:
         self.PC = 0
         self.IR = 0
         self.cycle = 0
-        self.stalls = 0
+        self.stalls_data = 0
+        self.stalls_control = 0
+        self.do_dataForwarding = True
         self.memAccess_run = False
         self.alu_run = False
         self.decode_run = False
@@ -19,44 +21,70 @@ class execute:
         self.stopPipeLine = False
         self.RDQueue = []
         self.branchTaken = False
+        self.total_ins = 0
+        self.total_control_ins = 0
+        self.total_data_ins = 0
+        self.total_alu_ins = 0
+        self.data_hazards = 0
+        self.control_hazards = 0
+        self.was_data_hazard = False
+        self.knob3 = False
+        self.knob4 = False
+        self.buffer_line_no = 0
 
     def runPipeLineStep(self):
+        print('Cycle No. : '+str(self.cycle) + ' ------------------------------------')
         if self.memAccess_run:
-            print('---------------------------')
+            #print('---------------------------')
             self.writeReg()
-            print('---------------------------')
+            #print('---------------------------')
         if self.alu_run:
-            print('---------------------------')
+            #print('---------------------------')
             self.memAccess()
-            print('---------------------------')
+            if self.knob4 or self.PC == (self.buffer_line_no - 1)/4:
+                print('RY : ' + str(self.RY))
+                print('RM : ' + str(self.RM))
+            #print('---------------------------')
         else:
             self.memAccess_run = False
         if self.decode_run:
-            print('---------------------------')
+            #print('---------------------------')
             self.alu()
-            print(self.alu_buffer)
-            print('---------------------------')
+            if self.knob4:
+                print('RZ : ' + str(self.RZ))
+            #print(self.alu_buffer)
+            #print('---------------------------')
         else:
             self.alu_run = False
         if self.fetch_run:
-            print('---------------------------')
+            #print('---------------------------')
             self.decode()
-            print(self.decode_buffer)
-            print('---------------------------')
+            if self.knob4:
+                print('RA : ' + str(self.RA))
+                if self.muxB == 0:
+                    print('RB : ' + str(self.RB))
+                else:
+                    print('imm : ' + str(self.imm))
+            #print(self.decode_buffer)
+            #print('---------------------------')
         else:
             self.decode_run = False
         if self.nextIR() != 0:
-            print('---------------------------')
+            #print('---------------------------')
             self.fetch()
-            print('---------------------------')
+            #print('---------------------------')
         else:
             self.fetch_run = False
         
         self.cycle = self.cycle+1
+        if self.knob3:
+            self.RegisterFile.printall()
+        if self.knob4:
+            print('IR : ' + self.IR)
 
         if (self.nextIR() == 0) and (not self.memAccess_run) and (not self.alu_run) and (not self.decode_run) and (not self.fetch_run):
             self.stopPipeLine = True
-            print('PipeLine Stoped!')
+            #print('PipeLine Stoped!')
 
     def runPipeLine(self):
         self.runPipeLineStep()
@@ -74,7 +102,15 @@ class execute:
         self.Memory.flush()
         self.PC = 0
         self.cycle = 0
-        self.stalls = 0
+        self.stalls_data = 0
+        self.stalls_control = 0
+        self.total_ins = 0
+        self.total_control_ins = 0
+        self.total_data_ins = 0
+        self.total_alu_ins = 0
+        self.data_hazards = 0
+        self.control_hazards = 0
+        self.was_data_hazard = False
         self.RegisterFile.writeC("00010", self.sp)          #setting x2 as stack pointer
         mc_code = mc_code.splitlines()
         for line in mc_code:
@@ -83,7 +119,7 @@ class execute:
                 address = int(address,16)
                 value = BitArray(hex = value).int
                 self.Memory.writeWord(address,value)
-                #print(self.Memory.readWord(address))
+                ##print(self.Memory.readWord(address))
             except:
                 return "fail"
 
@@ -93,31 +129,37 @@ class execute:
             self.fetch()
 
     def fetch(self): 
-        print(self.RDQueue)
+        #print(self.RDQueue)
         self.fetch_run = True
         self.IR = self.nextIR()
         self.IR = BitArray(int = self.IR, length = 32).bin
-        print("IR:"+str(self.IR))
+        #print("IR:"+str(self.IR))
         self.PC = self.PC + 4
         #self.decode()
     
     def decode(self):
         self.decode_run = True
-        self.decode_buffer = {'mem_enable' : '-1', 'RD' : '-1', 'muxY' : 0}
+        try:
+            self.preload = self.decode_buffer['load']
+        except:
+            self.preload = False
+        self.decode_buffer = {'mem_enable' : '-1', 'RD' : '-1', 'muxY' : 0, 'load' : False}
         self.opcode = self.IR[25:32]
-        print("opcode:"+self.opcode)
+        #print("opcode:"+self.opcode)
         self.RB = 0
         format = self.checkFormat()
-        print("format:"+format)
+        #print("format:"+format)
+        self.RS1 = '00000'
+        self.RS2 = '00000'
         if format == "r":
             self.decodeR()
         elif format == "iORs":
-            RS1 = self.IR[12:17]
-            print("RS1:"+RS1)
-            self.RA = self.RegisterFile.readA(RS1)
-            print("RA:"+str(self.RA))
+            self.RS1 = self.IR[12:17]
+            #print("RS1:"+self.RS1)
+            self.RA = self.RegisterFile.readA(self.RS1)
+            #print("RA:"+str(self.RA))
             self.funct3 = self.IR[17:20]
-            print("funct3:"+self.funct3)
+            #print("funct3:"+self.funct3)
             if self.opcode == "0100011" and self.funct3 != "011":
                 self.decodeS()
             else:
@@ -131,11 +173,23 @@ class execute:
     
     def alu(self):
         self.alu_run = True
+        if self.do_dataForwarding:
+            reversedQueue = list(reversed(self.RDQueue))
+            if self.preload:
+                second = reversedQueue[1]
+                if self.RS1 == second:
+                    self.RA = self.RY
+                    self.stalls_data = self.stalls_data + 1
+                    self.cycle = self.cycle + 1
+                if self.RS2 == second:
+                    self.RB = self.RY
+                    self.stalls_data = self.stalls_data + 1
+                    self.cycle = self.cycle + 1
         operation = self.decode_buffer['op']
         self.alu_buffer = {'RD' : self.decode_buffer['RD'], 'RM' : self.RB}
         self.muxY = self.decode_buffer['muxY']
         self.memory_enable = self.decode_buffer['mem_enable']
-        print("OP:", operation)
+        #print("OP:", operation)
         self.RZ = 0
         if operation == "add":
             if self.muxB == 0:
@@ -152,18 +206,22 @@ class execute:
             if self.RA == self.RB:
                 self.PC = self.PC - 8 + self.imm
                 self.fetch_run = False
+                self.stalls_control = self.stalls_control + 1
         elif operation == "bne":
             if self.RA != self.RB:
                 self.PC = self.PC - 8 + self.imm
                 self.fetch_run = False
+                self.stalls_control = self.stalls_control + 1
         elif operation == "bge":
             if self.RA >= self.RB:
                 self.PC = self.PC - 8 + self.imm
                 self.fetch_run = False
+                self.stalls_control = self.stalls_control + 1
         elif operation == "blt":
             if self.RA < self.RB:
                 self.PC = self.PC - 8 + self.imm
                 self.fetch_run = False
+                self.stalls_control = self.stalls_control + 1
         elif operation == "auipc":
             self.RZ = self.PC - 8 + self.imm
         elif operation == "jal":
@@ -227,6 +285,7 @@ class execute:
         self.RD = self.alu_buffer['RD']
         self.RM = self.alu_buffer['RM']
         if self.memory_enable != '-1':
+            self.total_data_ins = self.total_data_ins + 1
             if self.memory_enable == "lw":
                 self.data = self.Memory.readWord(self.RZ)           #lw
             elif self.memory_enable == "lb":
@@ -239,10 +298,13 @@ class execute:
                 self.data = self.Memory.readUnsignedDoubleByte(self.RZ)     #lhu
             elif self.memory_enable == "sw":                        #sw
                 self.Memory.writeWord(self.RZ,self.RM)
+                #print('RM and RZ : '+str(self.RM)+' '+str(self.RM))
             elif self.memory_enable == "sb":                        #sb
                 self.Memory.writeByte(self.RZ,self.RM)
+                #print('RM and RZ : '+str(self.RM)+' '+str(self.RM))
             elif self.memory_enable == "sh":                        #sh
                 self.Memory.writeDoubleByte(self.RZ, self.RM)
+                #print('RM and RZ : '+str(self.RM)+' '+str(self.RM))
         #writing in  muxY
         if self.muxY == 0:
             self.RY = self.RZ
@@ -250,18 +312,20 @@ class execute:
             self.RY = self.data
         elif self.muxY == 2:
             self.RY = self.PC_temp
-        print("muxY: "+str(self.muxY))
-        print("RY: "+str(self.RY))
+        #print("muxY: "+str(self.muxY))
+        #print("RY: "+str(self.RY))
         #self.writeReg()
 
     def writeReg(self):
-        print("in write RD: "+self.RD)
+        self.total_ins = self.total_ins + 1
+        #print("in write RD: "+self.RD)
+        #print("in write RY: "+str(self.RY))
         if self.RD != '-1':
             self.RegisterFile.writeC(self.RD, self.RY)
-            try:
-                self.RDQueue.remove(self.RD)
-            except:
-                print('Queue Empty!')
+        try:
+            self.RDQueue = self.RDQueue[1:]
+        except:
+            print('Queue Empty!')
 
     def checkFormat(self):
         iORs = "0000011 0001111 0010011 0011011 0100011 1100111 1110011".split()
@@ -285,28 +349,54 @@ class execute:
         return "none"
 
     def decodeR(self):
-        RS1 = self.IR[12:17]
-        print("RS1:"+RS1)
-        RS2 = self.IR[7:12]
-        print("RS2:"+RS2)
+        self.RS1 = self.IR[12:17]
+        #print("RS1:"+self.RS1)
+        self.RS2 = self.IR[7:12]
+        #print("RS2:"+self.RS2)
         RD = self.IR[20:25] 
-        print("RD:"+RD)
-        if RS1 in self.RDQueue or RS2 in self.RDQueue:
-            self.decode_run = False
-            self.PC = self.PC - 4
-            print('Stalling!')
-            self.stalls = self.stalls + 1
-            return
+        #print("RD:"+RD)
+        self.RA = self.RegisterFile.readA(self.RS1)
+        #print("RA:"+str(self.RA))
+        self.RB = self.RegisterFile.readB(self.RS2)
+        #print("RB:"+str(self.RB))
+        if self.RS1 in self.RDQueue or self.RS2 in self.RDQueue:
+            if self.do_dataForwarding:
+                reversedQueue = list(reversed(self.RDQueue))
+                first = reversedQueue[0]
+                if self.RS1 == first:
+                    self.RA = self.RZ
+                    self.was_data_hazard = True
+                if self.RS2 == first:
+                    self.RB = self.RZ
+                    self.was_data_hazard = True
+                try:
+                    second = reversedQueue[1]
+                    if first != second:
+                        if self.RS1 == second:
+                            self.RA = self.RY
+                            self.was_data_hazard = True
+                        if self.RS2 == second:
+                            self.RB = self.RY
+                            self.was_data_hazard = True
+                except:
+                    print('not applicable!')
+            else:
+                self.was_data_hazard = True
+                self.decode_run = False
+                self.PC = self.PC - 4
+                #print('Stalling!')
+                self.stalls_data = self.stalls_data + 1
+                return
+        if self.was_data_hazard:
+            self.data_hazards = self.data_hazards + 1
+            self.was_data_hazard = False
         self.decode_buffer['RD'] = RD
         self.RDQueue.append(RD)
-        self.RA = self.RegisterFile.readA(RS1)
-        print("RA:"+str(self.RA))
-        self.RB = self.RegisterFile.readB(RS2)
-        print("RB:"+str(self.RB))
         self.muxB = 0
         self.funct3 = self.IR[17:20]
         self.funct7 = self.IR[0:7]
         #self.muxY=0
+        self.total_alu_ins = self.total_alu_ins + 1
         if self.funct3 == "000" and self.funct7 == "0000000":
             self.decode_buffer['op'] = ("add")                 #add
         elif self.funct3 == "000" and self.funct7 == "0000001":
@@ -336,28 +426,49 @@ class execute:
 
 
     def decodeI(self):
-        print("I-format")
+        #print("I-format")
         self.imm = BitArray(bin = self.IR[0:12]).int
-        print("imm:"+str(self.imm))
+        #print("imm:"+str(self.imm))
         RD = self.IR[20:25] 
-        RS1 = self.IR[12:17]
-        if RS1 in self.RDQueue:
-            self.decode_run = False
-            self.PC = self.PC - 4
-            print('Stalling!')
-            self.stalls = self.stalls + 1
-            return
-        print("RD:"+RD)
+        self.RS1 = self.IR[12:17]
+        if self.RS1 in self.RDQueue:
+            if self.do_dataForwarding:
+                reversedQueue = list(reversed(self.RDQueue))
+                first = reversedQueue[0]
+                if self.RS1 == first:
+                    self.RA = self.RZ
+                    self.was_data_hazard = True
+                try:
+                    second = reversedQueue[1]
+                    if first != second:
+                        if self.RS1 == second:
+                            self.RA = self.RY
+                            self.was_data_hazard = True
+                except:
+                    print('not applicable!')
+            else:
+                self.was_data_hazard = True
+                self.decode_run = False
+                self.PC = self.PC - 4
+                #print('Stalling!')
+                self.stalls_data = self.stalls_data + 1
+                return
+        if self.was_data_hazard:
+            self.data_hazards = self.data_hazards + 1
+            self.was_data_hazard = False
+        #print("RD:"+RD)
         self.decode_buffer['RD'] = RD
         self.RDQueue.append(RD)
         self.muxB = 1
         if self.opcode == "0010011" and self.funct3 == "000":
             #self.muxY = 0
+            self.total_alu_ins = self.total_alu_ins + 1
             self.decode_buffer['op'] = 'add'                 #addi
         elif self.opcode == "0000011" and (self.funct3 == "010" or self.funct3 == "000" or self.funct3 == "001" or self.funct3 == "100" or self.funct3 == "101"):
             #self.muxY = 1
             self.decode_buffer['muxY'] = 1
             #self.memory_enable = True
+            self.decode_buffer['load'] = True
             self.decode_buffer['op'] = 'add'
             if self.funct3 == "010":
                 self.decode_buffer['mem_enable'] = 'lw'     #lw
@@ -370,11 +481,13 @@ class execute:
             elif self.funct3 == "101":
                 self.decode_buffer['mem_enable'] = 'lhu'    #lhu
         elif self.opcode == "1100111" and self.funct3 == "000":
+            self.total_control_ins = self.total_control_ins + 1
             self.decode_buffer['muxY'] = 2
             self.decode_buffer['op'] = 'jalr'               #jalr 
             self.decode_buffer['PC_temp'] = self.PC
             self.PC = self.RA + self.imm
         elif self.opcode == "0010011":
+            self.total_alu_ins = self.total_alu_ins + 1
             if self.funct3 == "001":
                 self.funct7 = self.IR[0:7]
                 self.imm = BitArray(bin = self.IR[7:12]).uint
@@ -402,18 +515,44 @@ class execute:
 
     
     def decodeS(self):
-        RS1 = self.IR[12:17]
-        print("S-format")
-        RS2 = self.IR[7:12]
-        print("RS2:"+RS2)
-        if RS1 in self.RDQueue or RS2 in self.RDQueue:
-            self.decode_run = False
-            self.PC = self.PC - 4
-            print('Stalling!')
-            self.stalls = self.stalls + 1
-            return
-        self.RB = self.RegisterFile.readB(RS2)
-        print("RB:"+str(self.RB))
+        self.RS1 = self.IR[12:17]
+        #print("S-format")
+        self.RS2 = self.IR[7:12]
+        #print("RS2:"+self.RS2)
+        self.RB = self.RegisterFile.readB(self.RS2)
+        #print("RB:"+str(self.RB))
+        if self.RS1 in self.RDQueue or self.RS2 in self.RDQueue:
+            if self.do_dataForwarding:
+                reversedQueue = list(reversed(self.RDQueue))
+                first = reversedQueue[0]
+                if self.RS1 == first:
+                    self.RA = self.RZ
+                    self.was_data_hazard = True
+                if self.RS2 == first:
+                    self.RB = self.RZ
+                    self.was_data_hazard = True
+                try:
+                    second = reversedQueue[1]
+                    if first != second:
+                        if self.RS1 == second:
+                            self.RA = self.RY
+                            self.was_data_hazard = True
+                        if self.RS2 == second:
+                            self.RB = self.RY
+                            self.was_data_hazard = True
+                except:
+                    print('not applicable!')
+            else:
+                self.was_data_hazard = True
+                self.decode_run = False
+                self.PC = self.PC - 4
+                #print('Stalling!')
+                self.stalls_data = self.stalls_data + 1
+                return
+        if self.was_data_hazard:
+            self.data_hazards = self.data_hazards + 1
+            self.was_data_hazard = False
+        self.RDQueue.append('-1')
         imm1 = self.IR[0:7]
         imm2 = self.IR[20:25]
         #self.write_enable = False
@@ -431,20 +570,46 @@ class execute:
                 self.decode_buffer['mem_enable'] = 'sh'
 
     def decodeSB(self):
-        RS1 = self.IR[12:17]
-        print("RS1:"+RS1)
-        RS2 = self.IR[7:12]
-        print("RS2:"+RS2)
-        if RS1 in self.RDQueue or RS2 in self.RDQueue:
-            self.decode_run = False
-            self.PC = self.PC - 4
-            print('Stalling!')
-            self.stalls = self.stalls + 1
-            return
-        self.RA = self.RegisterFile.readA(RS1)
-        print("RA:"+str(self.RA))
-        self.RB = self.RegisterFile.readB(RS2)
-        print("RB:"+str(self.RB))
+        self.RS1 = self.IR[12:17]
+        #print("RS1:"+self.RS1)
+        self.RS2 = self.IR[7:12]
+        #print("RS2:"+self.RS2)
+        self.RA = self.RegisterFile.readA(self.RS1)
+        #print("RA:"+str(self.RA))
+        self.RB = self.RegisterFile.readB(self.RS2)
+        #print("RB:"+str(self.RB))
+        if self.RS1 in self.RDQueue or self.RS2 in self.RDQueue:
+            if self.do_dataForwarding:
+                reversedQueue = list(reversed(self.RDQueue))
+                first = reversedQueue[0]
+                if self.RS1 == first:
+                    self.RA = self.RZ
+                    self.was_data_hazard = True
+                if self.RS2 == first:
+                    self.RB = self.RZ
+                    self.was_data_hazard = True
+                try:
+                    second = reversedQueue[1]
+                    if first != second:
+                        if self.RS1 == second:
+                            self.RA = self.RY
+                            self.was_data_hazard = True
+                        if self.RS2 == second:
+                            self.RB = self.RY
+                            self.was_data_hazard = True
+                except:
+                    print('not applicable!')
+            else:
+                self.was_data_hazard = True
+                self.decode_run = False
+                self.PC = self.PC - 4
+                #print('Stalling!')
+                self.stalls_data = self.stalls_data + 1
+                return
+        if self.was_data_hazard:
+            self.data_hazards = self.data_hazards + 1
+            self.was_data_hazard = False
+        self.RDQueue.append('-1')
         self.muxB = 0
         self.funct3 = self.IR[17:20]
         imm1 = self.IR[0]
@@ -453,8 +618,11 @@ class execute:
         imm4 = self.IR[20:24]
         #self.write_enable = False
         self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").int
+        self.total_control_ins = self.total_control_ins + 1
+        self.control_hazards = self.control_hazards + 1
+        
         if self.funct3 == "000":
-            print("going to beq")
+            #print("going to beq")
             self.decode_buffer['op'] = 'beq'         #beq
         elif self.funct3 == "101":
             self.decode_buffer['op'] = 'bge'         #bge
@@ -463,7 +631,7 @@ class execute:
         elif self.funct3 == "001":
             self.decode_buffer['op'] = 'bne'         #bne
         self.imm = BitArray(bin = imm1 + imm2 + imm3 + imm4 + "0").uint     #for unsigned operations
-        print(str(self.imm))
+        #print(str(self.imm))
         if self.funct3 == "111":
             self.decode_buffer['op'] = 'bge'         #bgeu
         elif self.funct3 == "110":
@@ -472,12 +640,14 @@ class execute:
         
     def decodeU(self):
         RD = self.IR[20:25] 
-        print("RD:"+RD)
+        #print("RD:"+RD)
         self.decode_buffer['RD'] = RD
         self.RDQueue.append(RD)
         imm1 = self.IR[0:20]
         imm2 = "000000000000"
         self.imm = BitArray(bin = imm1 + imm2).int
+        #print('IMM : '+str(self.imm))
+        self.total_alu_ins = self.total_alu_ins + 1
         if self.opcode == "0110111":
             self.RA = 0
             self.RB = 0
@@ -487,10 +657,11 @@ class execute:
             self.decode_buffer['op'] = 'auipc'       #auipc
 
     def decodeUJ(self):
+        self.total_control_ins = self.total_control_ins + 1
         self.RA = 0
         self.RB = 0
         RD = self.IR[20:25] 
-        print("RD:"+RD)
+        #print("RD:"+RD)
         self.decode_buffer['RD'] = RD
         self.RDQueue.append(RD)
         imm1 = self.IR[0]

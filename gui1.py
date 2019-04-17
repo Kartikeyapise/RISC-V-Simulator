@@ -212,8 +212,6 @@ class Ui_MainWindow(QtWidgets.QWidget):
         MainWindow.setStatusBar(self.statusbar)
         self.actionExit = QtWidgets.QAction(MainWindow)
         self.actionExit.setObjectName("actionExit")
-        self.actionEixt = QtWidgets.QAction(MainWindow)
-        self.actionEixt.setObjectName("actionEixt")
         self.actionHelp = QtWidgets.QAction(MainWindow)
         self.actionHelp.setObjectName("actionHelp")
         self.menuFIle.addAction(self.actionExit)
@@ -286,10 +284,10 @@ class Ui_MainWindow(QtWidgets.QWidget):
                 self.Execute.readbyteMemory(key+3)]
                 if self.comboIndex == 0:
                     content = ["0x"+'{:08x}'.format(key),
-                        BitArray(int=self.Execute.readbyteMemory(key+3), length = 8).hex,
-                        BitArray(int=self.Execute.readbyteMemory(key+2), length = 8).hex,
+                        BitArray(int=self.Execute.readbyteMemory(key), length = 8).hex,
                         BitArray(int=self.Execute.readbyteMemory(key+1), length = 8).hex,
-                        BitArray(int=self.Execute.readbyteMemory(key), length = 8).hex]
+                        BitArray(int=self.Execute.readbyteMemory(key+2), length = 8).hex,
+                        BitArray(int=self.Execute.readbyteMemory(key+3), length = 8).hex]
                 memlist.append(content)
 
         if len(memlist)>0:
