@@ -1,12 +1,12 @@
 from bitstring import BitArray
 
 from registers import register
-from memory import memory
+from cache import cache
 
 class execute:
     def __init__(self):
         self.RegisterFile = register()
-        self.Memory = memory()
+        self.Memory = cache()
         self.sp=0x7ffffffc
         self.PC = 0
         self.IR = 0
