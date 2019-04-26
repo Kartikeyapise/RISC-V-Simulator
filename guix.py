@@ -367,6 +367,7 @@ class Ui_MainWindow(QtWidgets.QWidget):
             mem = self.Execute.returnMemory()
             exeobj = self.PipelineExecute
         memlist = []
+        print(mem)
         for key, value in mem.items():
             if key %4 == 0:
                 content = ["0x"+'{:08x}'.format(key),exeobj.readbyteMemory(key),

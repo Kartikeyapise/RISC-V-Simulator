@@ -44,7 +44,7 @@ class cache:
     
     def cache_list_classifier(self, k_way):
 
-        number_of_sets = self.number_of_blocks/k_way
+        number_of_sets = (int)(self.number_of_blocks/k_way)
         cache_list_dict = []
         for _ in range(number_of_sets):
             cache_list_dict.append({})
@@ -86,7 +86,7 @@ class cache:
                 return self.return_value(self.cache_list[index][1+int(address[self.tag_bits + self.block_bits:30])], bytes_, unsigned_)
 
         else:
-            # cache_list[index]=[]
+            self.cache_list[index]=[]
             self.cache_list[index].append(address[0:self.tag_bits])
             zero=''
             for i in range(self.word_bits+2):
